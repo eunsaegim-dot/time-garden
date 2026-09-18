@@ -993,13 +993,19 @@ function renderGardenScreen() {
     const jitterSeed = entry.elapsedSeconds + index * 7.13;
     const scaleJitter = 0.86 + 0.3 * hash01(jitterSeed + 1);
     const liftJitter = -5 + 10 * hash01(jitterSeed + 2);
-    const marginLeft = 4 + 20 * hash01(jitterSeed + 3);
-    const marginRight = 4 + 20 * hash01(jitterSeed + 4);
+    const marginLeft = 8 + 32 * hash01(jitterSeed + 3);
+    const marginRight = 8 + 32 * hash01(jitterSeed + 4);
 
     const wrapper = document.createElement("div");
     wrapper.className = "garden-plant-slot";
     wrapper.style.margin = `0 ${marginRight.toFixed(1)}px 0 ${marginLeft.toFixed(1)}px`;
-    wrapper.style.transform = `scale(${scaleJitter.toFixed(3)}) translateY(${liftJitter.toFixed(1)}px)`;
+
+    // 식물 크기/위치의 랜덤 흔들림(scaleJitter, liftJitter)은 식물에만 적용한다.
+    // 라벨까지 같은 transform 안에 있으면 라벨 글씨 크기도 함께 커지고 작아져서
+    // 라벨마다 눈에 보이는 크기가 달라지므로, 라벨은 이 스케일 바깥의 별도 형제 요소로 둔다.
+    const scaleBox = document.createElement("div");
+    scaleBox.className = "garden-plant-scale";
+    scaleBox.style.transform = `scale(${scaleJitter.toFixed(3)}) translateY(${liftJitter.toFixed(1)}px)`;
 
     const slot = document.createElement("div");
     slot.className = "garden-plant";
@@ -1011,12 +1017,14 @@ function renderGardenScreen() {
     svg.setAttribute("aria-hidden", "true");
     slot.appendChild(svg);
 
+    scaleBox.appendChild(slot);
+    wrapper.appendChild(scaleBox);
+
     const label = document.createElement("p");
     label.className = "garden-plant-label";
     label.textContent = plantLabelFor(index);
-    slot.appendChild(label);
+    wrapper.appendChild(label);
 
-    wrapper.appendChild(slot);
     container.appendChild(wrapper);
     // 예전에 저장된 식물(개성 시드가 없는 데이터)도 문제없이 그려지도록 대체값을 준비해 둔다.
     const seed = entry.randomSeed !== undefined ? entry.randomSeed : entry.elapsedSeconds * 137.5;

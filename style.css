@@ -739,13 +739,13 @@ body {
 }
 
 .garden-plants {
-  width: min(92vw, 900px);
+  width: min(94vw, 1080px);
   min-height: 150px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 1.6rem;
+  gap: 1.6rem 2.6rem;
   padding: 0 1rem;
 }
 
@@ -763,17 +763,30 @@ body {
   box-shadow: inset 0 18px 34px rgba(130, 180, 150, 0.1), 0 0 60px rgba(0, 0, 0, 0.35);
 }
 
-/* 식물마다 다른 크기/좌우 위치 흔들림은 이 래퍼에 인라인으로 적용된다.
-   (.garden-plant 자체는 진입 애니메이션이 transform을 사용하므로,
-   크기/위치 조정을 같은 요소에 주면 애니메이션이 덮어써 버린다) */
+/* 좌우 위치 흔들림(margin)은 이 바깥 래퍼에 인라인으로 적용된다.
+   라벨(.garden-plant-label)은 이 래퍼의 형제가 아니라 직계 자식으로 두고,
+   아래 .garden-plant-scale의 랜덤 스케일에는 포함시키지 않아 라벨 글씨 크기가
+   모든 식물에서 항상 동일하게 유지되도록 한다. */
 .garden-plant-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+/* 식물마다 다른 크기/높이 흔들림(scale, translateY)은 이 래퍼에 인라인으로 적용된다.
+   (.garden-plant 자체는 진입 애니메이션이 transform을 사용하므로,
+   크기/위치 조정을 같은 요소에 주면 애니메이션이 덮어써 버린다)
+   transform-origin을 바닥 중앙으로 두어, 커질 때도 아래쪽(라벨/땅 방향)이 아니라
+   위쪽으로만 자라나 라벨과 겹치지 않게 한다. */
+.garden-plant-scale {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: 50% 100%;
+}
+
 .garden-plant {
-  width: 84px;
+  width: 151px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -794,14 +807,14 @@ body {
 }
 
 .garden-plant-svg {
-  width: 84px;
-  height: 108px;
+  width: 151px;
+  height: 194px;
   overflow: visible;
 }
 
 .garden-plant-label {
-  margin-top: 0.5rem;
-  font-size: 0.62rem;
+  margin-top: 0.85rem;
+  font-size: 1.05rem;
   letter-spacing: 0.05em;
   color: var(--ink-500);
   text-align: center;
@@ -1003,13 +1016,21 @@ body {
     padding: 2.4rem 1rem 1.8rem;
   }
 
+  .garden-plants {
+    gap: 1.2rem 1.6rem;
+  }
+
   .garden-plant {
-    width: 68px;
+    width: 122px;
   }
 
   .garden-plant-svg {
-    width: 68px;
-    height: 88px;
+    width: 122px;
+    height: 158px;
+  }
+
+  .garden-plant-label {
+    font-size: 0.92rem;
   }
 
   .garden-ground {
@@ -1070,5 +1091,22 @@ body {
 
   .footer-note {
     display: none;
+  }
+
+  .garden-plants {
+    gap: 1rem 1.4rem;
+  }
+
+  .garden-plant {
+    width: 112px;
+  }
+
+  .garden-plant-svg {
+    width: 112px;
+    height: 144px;
+  }
+
+  .garden-plant-label {
+    font-size: 0.85rem;
   }
 }
