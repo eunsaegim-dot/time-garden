@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>체감시간의 정원 | The Garden of Perceived Time</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200;300;400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="scene">
+    <div class="sky"></div>
+    <div class="glow glow--one"></div>
+    <div class="glow glow--two"></div>
+    <div class="glow glow--three"></div>
+    <div class="particles" id="particles"></div>
+    <div class="horizon"></div>
+
+    <div class="screens">
+      <section class="screen screen--intro is-active" id="screen-intro">
+        <main class="content">
+          <p class="eyebrow">A QUIET EXPERIMENT ON TIME</p>
+          <h1 class="title">체감시간의 정원</h1>
+          <p class="subtitle">The Garden of Perceived Time</p>
+          <p class="description">같은 1분도, 우리는 서로 다르게 경험합니다.</p>
+
+          <button class="btn btn--intro" id="startBtn" type="button">
+            <span class="btn__label">시간 경험 시작하기</span>
+            <span class="btn__ring"></span>
+          </button>
+        </main>
+
+        <p class="footer-note">시계를 보지 않고, 마음으로 1분을 느껴보세요</p>
+      </section>
+
+      <section class="screen screen--measure" id="screen-measure">
+        <div class="measure-content">
+          <p class="measure-line measure-line--one">눈을 감아도 좋습니다.</p>
+          <p class="measure-line measure-line--two">당신이 느끼는 1분에 집중해보세요.</p>
+
+          <button class="btn btn--measure" id="minuteBtn" type="button">
+            <span class="btn__label">지금, 1분</span>
+            <span class="btn__ring"></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="screen screen--result" id="screen-result">
+        <div class="result-content">
+          <p class="result-eyebrow">당신이 느낀 1분</p>
+
+          <div class="result-row">
+            <span class="result-label">실제로 흐른 시간</span>
+            <span class="result-value" id="actualTimeValue">0.0초</span>
+          </div>
+
+          <div class="result-row">
+            <span class="result-label">체감의 차이</span>
+            <span class="result-value" id="diffTimeValue">+0.0초</span>
+          </div>
+
+          <p class="result-message">같은 1분도, 당신에게는 다른 모습으로 흐릅니다.</p>
+
+          <button class="btn btn--plant" id="plantBtn" type="button">
+            <span class="btn__label">이 시간을 심기</span>
+            <span class="btn__ring"></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="screen screen--grow" id="screen-grow">
+        <div class="grow-content">
+          <div class="plant-stage">
+            <svg
+              id="plantSvg"
+              class="plant-svg"
+              viewBox="0 0 400 480"
+              preserveAspectRatio="xMidYMax meet"
+              aria-hidden="true"
+            ></svg>
+          </div>
+
+          <div class="plant-info" id="plantInfo">
+            <p class="plant-caption">당신의 시간이 하나의 형태로 자라났습니다.</p>
+
+            <div class="plant-stats">
+              <div class="plant-stat">
+                <span class="plant-stat__label">체감한 시간</span>
+                <span class="plant-stat__value">60초</span>
+              </div>
+              <div class="plant-stat">
+                <span class="plant-stat__label">실제로 흐른 시간</span>
+                <span class="plant-stat__value" id="plantActualValue">0.0초</span>
+              </div>
+              <div class="plant-stat">
+                <span class="plant-stat__label">시간의 차이</span>
+                <span class="plant-stat__value" id="plantDiffValue">+0.0초</span>
+              </div>
+            </div>
+
+            <div class="plant-actions">
+              <button class="btn btn--garden" id="gardenBtn" type="button">
+                <span class="btn__label">나의 정원에 심기</span>
+                <span class="btn__ring"></span>
+              </button>
+              <button class="link-btn" id="restartBtn" type="button">다시 경험하기</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen screen--garden" id="screen-garden">
+        <div class="garden-content">
+          <div class="garden-header">
+            <h2 class="garden-title">나의 시간 정원</h2>
+            <p class="garden-subtitle">당신이 느낀 시간들이 이곳에서 자라납니다.</p>
+          </div>
+
+          <div class="garden-bed" id="gardenBed">
+            <div class="garden-plants" id="gardenPlants"></div>
+            <div class="garden-ground"></div>
+          </div>
+
+          <div class="garden-empty" id="gardenEmpty" hidden>
+            <p class="garden-empty__text">아직 심어진 시간이 없습니다.<br />새로운 시간을 느껴보세요.</p>
+            <button class="btn btn--garden-new" id="firstPlantBtn" type="button">
+              <span class="btn__label">첫 시간 심기</span>
+              <span class="btn__ring"></span>
+            </button>
+          </div>
+
+          <button class="btn btn--garden-new" id="newTimeBtn" type="button">
+            <span class="btn__label">새로운 시간 심기</span>
+            <span class="btn__ring"></span>
+          </button>
+
+          <button class="link-btn link-btn--muted" id="resetGardenBtn" type="button">정원 초기화</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="resetModalOverlay" hidden>
+    <div class="modal-card">
+      <p class="modal-message">정원에 심어둔 모든 시간이 사라집니다.<br />정원을 처음부터 다시 시작할까요?</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--ghost" id="resetCancelBtn" type="button">취소</button>
+        <button class="modal-btn modal-btn--confirm" id="resetConfirmBtn" type="button">처음부터 시작하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
