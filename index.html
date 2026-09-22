@@ -119,6 +119,7 @@
           <div class="garden-header">
             <h2 class="garden-title">나의 시간 정원</h2>
             <p class="garden-subtitle">당신이 느낀 시간들이 이곳에서 자라납니다.</p>
+            <p class="garden-hint">식물을 눌러 시간의 기록을 확인해보세요</p>
           </div>
 
           <div class="garden-bed" id="gardenBed">
@@ -143,6 +144,27 @@
         </div>
       </section>
     </div>
+  </div>
+
+  <div class="time-card-catcher" id="timeCardCatcher" hidden></div>
+  <div class="time-card" id="timeCard" role="dialog" aria-modal="false" aria-labelledby="timeCardTitle" hidden>
+    <button class="time-card__close" id="timeCardClose" type="button" aria-label="닫기">&times;</button>
+    <p class="time-card__title" id="timeCardTitle">첫 번째 시간</p>
+    <div class="time-card__stats">
+      <div class="time-card__stat">
+        <span class="time-card__label">체감한 시간</span>
+        <span class="time-card__value">60초</span>
+      </div>
+      <div class="time-card__stat">
+        <span class="time-card__label">실제로 흐른 시간</span>
+        <span class="time-card__value" id="timeCardActual">기록 없음</span>
+      </div>
+      <div class="time-card__stat">
+        <span class="time-card__label">오차</span>
+        <span class="time-card__value" id="timeCardDiff">기록 없음</span>
+      </div>
+    </div>
+    <p class="time-card__message" id="timeCardMessage"></p>
   </div>
 
   <div class="modal-overlay" id="resetModalOverlay" hidden>

@@ -735,6 +735,14 @@ body {
   color: var(--ink-300);
 }
 
+.garden-hint {
+  margin-top: 0.55rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-500);
+  opacity: 0.85;
+}
+
 .garden-bed[hidden] {
   display: none;
 }
@@ -780,6 +788,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  cursor: pointer;
+}
+
+.garden-plant-slot:focus-visible {
+  outline: none;
 }
 
 /* 식물마다 다른 크기/높이 흔들림(scale, translateY)은 이 래퍼에 인라인으로 적용된다.
@@ -792,6 +805,18 @@ body {
   flex-direction: column;
   align-items: center;
   transform-origin: 50% 100%;
+  transition: filter 0.5s var(--ease-soft);
+}
+
+/* 클릭 가능함을 아주 은은하게 알리는 정도의 밝기/글로우 변화만 준다. */
+.garden-plant-slot:hover .garden-plant-scale,
+.garden-plant-slot:focus-visible .garden-plant-scale {
+  filter: drop-shadow(0 0 14px rgba(217, 178, 106, 0.3)) brightness(1.05);
+}
+
+.garden-plant-slot:hover .garden-plant-label,
+.garden-plant-slot:focus-visible .garden-plant-label {
+  color: var(--ink-300);
 }
 
 .garden-plant {
@@ -827,6 +852,7 @@ body {
   letter-spacing: 0.05em;
   color: var(--ink-500);
   text-align: center;
+  transition: color 0.4s var(--ease-soft);
 }
 
 .btn--garden-new {
@@ -867,6 +893,128 @@ body {
 
 .link-btn--muted:hover {
   opacity: 1;
+}
+
+/* ---------- Plant time card (정원 식물 클릭 시 뜨는 정보 카드) ---------- */
+/* 배경 전체를 어둡게 덮지는 않고, 바깥 클릭을 감지하기 위한 투명한 레이어만 둔다
+   (정원을 계속 감상할 수 있도록). 카드 자체는 화면에 고정된 위치에 떠서 클릭한
+   식물 가까이(위쪽 우선, 공간이 없으면 아래쪽)에 나타나고, 좁은 화면에서는
+   .time-card--centered가 더해져 화면 중앙의 작은 모달로 전환된다. */
+.time-card-catcher[hidden] {
+  display: none;
+}
+
+.time-card-catcher {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: transparent;
+}
+
+.time-card[hidden] {
+  display: none;
+}
+
+.time-card {
+  position: fixed;
+  z-index: 56;
+  width: min(88vw, 17.5rem);
+  padding: 1.3rem 1.5rem 1.2rem;
+  border-radius: 16px;
+  background: rgba(12, 16, 20, 0.92);
+  border: 1px solid rgba(217, 178, 106, 0.3);
+  box-shadow: 0 0 46px rgba(217, 178, 106, 0.08), 0 14px 38px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.32s var(--ease-soft), transform 0.32s var(--ease-soft);
+}
+
+.time-card.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.time-card--centered {
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) scale(0.97);
+}
+
+.time-card--centered.is-visible {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.time-card__close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.6rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: var(--ink-500);
+  transition: color 0.3s var(--ease-soft);
+}
+
+.time-card__close:hover {
+  color: var(--ink-50);
+}
+
+.time-card__close:focus-visible {
+  outline: 2px solid var(--amber-400);
+  outline-offset: 2px;
+}
+
+.time-card__title {
+  font-family: "Noto Serif KR", serif;
+  font-weight: 300;
+  font-size: 1.02rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-50);
+  padding-right: 1.3rem;
+}
+
+.time-card__stats {
+  margin-top: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+}
+
+.time-card__stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: var(--ink-500);
+  letter-spacing: 0.02em;
+}
+
+.time-card__value {
+  color: var(--ink-100);
+  font-variant-numeric: tabular-nums;
+}
+
+.time-card__message {
+  margin-top: 0.9rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(217, 178, 106, 0.16);
+  font-family: "Noto Serif KR", serif;
+  font-weight: 300;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--ink-300);
 }
 
 /* ---------- Confirm modal ---------- */

@@ -553,239 +553,210 @@ function drawGardenLeaves(ctx, leafPoints) {
   });
 }
 
-// ---- TYPE A: 가느다란 줄기 끝에 비교적 큰 꽃 한 송이 ----
-function buildGardenTypeSingleBloom(ctx) {
-  const { svg, base, sizeScale } = ctx;
-  const stemH = 155 * sizeScale;
-  const bow = 12 * sizeScale * (hash01(ctx.seedBase + 1) - 0.5) * 2;
-  const tip = { x: base.x + bow * 0.4, y: base.y - stemH };
+// ---- 통합 구조 성장 시스템 ----
+// 예전에는 "타입 6종" 중 하나를 고른 뒤 그 타입 고유의 고정된 실루엣을 sizeScale로만
+// 확대/축소했기 때문에, 시간이 길어지면 "같은 모양이 커지기만" 하거나 "줄기만 길어지는"
+// 것처럼 보였다. 지금은 그 대신 성장 단계(키 mainHeight, 가지 수 branchCount, 2차 가지 수
+// secondaryBranchCount, 잎 수 leafCount 등)에 따라 매번 새로 가지를 치며 골격 자체를
+// 만들어서, 시간이 지날수록 "새싹 → 풀 → 풍성한 식물 → 관목 → 작은 나무"로 구조가
+// 실제로 달라지도록 한다. randomSeed는 줄기 곡선·가지 방향/길이·잎 모양/방향·전체 폭
+// 같은 "이 식물만의 개성"에만 쓰여, 같은 성장 단계라도 식물마다 실루엣이 조금씩 다르다.
+function buildStructuredPlant(ctx) {
+  const { svg, base, seedBase, growth } = ctx;
+
+  // 이 식물만의 비대칭(치우침) — 가지가 한쪽으로 살짝 더 뻗는 경향, 줄기 곡선 방향.
+  const leanBias = (hash01(seedBase + 11) - 0.5) * 2; // -1 ~ 1
+  const bowMag = 16 + 12 * hash01(seedBase + 13);
+  const bow = (hash01(seedBase + 12) - 0.5) * 2 * bowMag + leanBias * 6;
+
+  const tip = { x: base.x + bow * 0.32, y: base.y - growth.mainHeight };
   const stemCurve = appendCurvePath(svg, base, tip, bow, ctx.stemStroke, ctx.stemColorCss, true);
 
-  const leafPoints = [];
-  const leafN = clamp(Math.round(ctx.leafCount * 0.4), 0, ctx.leafCount);
-  for (let i = 0; i < leafN; i++) {
-    const t = 0.16 + (i / (leafN - 1 || 1)) * 0.5;
+  // ---- 1차 가지: 줄기를 따라 여러 높이에서 좌우로 자연스럽게 갈라진다 ----
+  // massT(풍성함)가 클수록 가지가 더 아래쪽에서부터 나기 시작해, 성숙한 식물일수록
+  // 아래쪽이 비어 보이지 않게 된다.
+  const tMin = clamp(0.32 - 0.32 * growth.massT, 0.05, 0.32);
+  const tMax = 0.94;
+  const branchCount = growth.branchCount;
+  const primaryBranches = [];
+  for (let i = 0; i < branchCount; i++) {
+    const evenT = branchCount === 1 ? (tMin + tMax) / 2 : tMin + (i / (branchCount - 1)) * (tMax - tMin);
+    const seed = seedBase + 60 + i * 5.3;
+    const t = clamp(evenT + (hash01(seed) - 0.5) * 0.06, 0.03, 0.97);
     const pt = quadPoint(t, stemCurve.from, stemCurve.mid, stemCurve.to);
-    const side = i % 2 === 0 ? -1 : 1;
-    leafPoints.push({ point: pt, angle: -90 + side * (30 + 15 * hash01(ctx.seedBase + 3 + i)) });
-  }
 
-  const bloomPoints = [{ point: tip, angle: -90 }];
-  const extra = ctx.openFlowerCount + ctx.budCount - 1;
-  for (let i = 0; i < extra; i++) {
-    const seed = ctx.seedBase + 40 + i * 3.3;
-    const angle = -90 + (hash01(seed) - 0.5) * 200;
-    const dist = (14 + 12 * hash01(seed + 1)) * sizeScale;
-    const point = { x: tip.x + Math.cos((angle * Math.PI) / 180) * dist, y: tip.y + Math.sin((angle * Math.PI) / 180) * dist };
-    appendCurvePath(svg, tip, point, (hash01(seed + 2) - 0.5) * 10, ctx.stemStroke * 0.3, ctx.branchColorCss, false);
-    bloomPoints.push({ point, angle });
-  }
-  return { bloomPoints, leafPoints, tip };
-}
-
-// ---- TYPE B: 줄기가 여러 방향으로 갈라지고 작은 꽃 여러 송이 ----
-function buildGardenTypeForking(ctx) {
-  const { svg, base, sizeScale } = ctx;
-  const stemH = 118 * sizeScale;
-  const bow = 8 * sizeScale * (hash01(ctx.seedBase + 1) - 0.5) * 2;
-  const tip = { x: base.x + bow * 0.5, y: base.y - stemH };
-  const stemCurve = appendCurvePath(svg, base, tip, bow, ctx.stemStroke, ctx.stemColorCss, true);
-  const forkPoint = quadPoint(0.55, stemCurve.from, stemCurve.mid, stemCurve.to);
-
-  const leafPoints = [];
-  const leafN = clamp(Math.round(ctx.leafCount * 0.7), 1, ctx.leafCount);
-  for (let i = 0; i < leafN; i++) {
-    const t = 0.14 + (i / (leafN - 1 || 1)) * 0.32;
-    const side = i % 2 === 0 ? -1 : 1;
-    leafPoints.push({
-      point: quadPoint(t, stemCurve.from, stemCurve.mid, stemCurve.to),
-      angle: -90 + side * (28 + 14 * hash01(ctx.seedBase + 5 + i)),
-    });
-  }
-
-  const branchN = clamp(Math.round(ctx.nBranches * 0.7), ctx.openFlowerCount + ctx.budCount > 0 ? 1 : 0, 6);
-  const bloomPoints = [];
-  for (let i = 0; i < branchN; i++) {
-    const seed = ctx.seedBase + 20 + i * 4.4;
-    const angle = -90 + (i - (branchN - 1) / 2) * 38 + (hash01(seed) - 0.5) * 22;
-    const len = (46 + 28 * hash01(seed + 1)) * sizeScale;
-    const subTip = {
-      x: forkPoint.x + Math.cos((angle * Math.PI) / 180) * len,
-      y: forkPoint.y + Math.sin((angle * Math.PI) / 180) * len,
+    let side = i % 2 === 0 ? -1 : 1;
+    if (hash01(seed + 0.7) < 0.3) {
+      side = leanBias >= 0 ? 1 : -1;
+    }
+    const verticalBias = 1 - t; // 줄기 아래쪽일수록 1에 가까움 → 더 옆으로, 더 길게
+    const spread = growth.angleSpread * (0.45 + 0.55 * verticalBias);
+    // 가지가 수평보다 아래로 처져 화면(뷰박스) 밖으로 나가지 않도록, 수직(-90°) 기준
+    // 좌우 벌어짐을 84°로 제한한다 (즉 가지는 항상 수평보다 위쪽을 향한다).
+    const angle = -90 + side * clamp(spread * (0.75 + 0.5 * hash01(seed + 1)), 0, 84);
+    const len = growth.branchLenBase * (0.75 + 0.5 * hash01(seed + 2)) * (0.8 + 0.4 * verticalBias);
+    const branchBow = side * (6 + 10 * hash01(seed + 3));
+    const endPt = {
+      x: pt.x + Math.cos((angle * Math.PI) / 180) * len,
+      y: pt.y + Math.sin((angle * Math.PI) / 180) * len,
     };
-    appendCurvePath(svg, forkPoint, subTip, (hash01(seed + 2) - 0.5) * 20, ctx.stemStroke * 0.55, ctx.branchColorCss, false);
-    bloomPoints.push({ point: subTip, angle });
-  }
-  return { bloomPoints, leafPoints, tip };
-}
-
-// ---- TYPE C: 키가 작고 둥근 잎이 많으며 작은 꽃들이 모여 핌 ----
-function buildGardenTypeClusteredLow(ctx) {
-  const { svg, base, sizeScale } = ctx;
-  const stemH = 68 * sizeScale;
-  const bow = 6 * sizeScale * (hash01(ctx.seedBase + 1) - 0.5) * 2;
-  const tip = { x: base.x + bow * 0.3, y: base.y - stemH };
-  const stemCurve = appendCurvePath(svg, base, tip, bow, ctx.stemStroke, ctx.stemColorCss, true);
-
-  const leafPoints = [];
-  const leafN = clamp(Math.round(ctx.leafCount * 1.2), 1, ctx.leafCount + 3);
-  for (let i = 0; i < leafN; i++) {
-    const t = 0.15 + (i / (leafN - 1 || 1)) * 0.6;
-    const pt = quadPoint(t, stemCurve.from, stemCurve.mid, stemCurve.to);
-    const side = i % 2 === 0 ? -1 : 1;
-    const seed = ctx.seedBase + 4 + i;
-    const angle = -90 + side * (40 + 20 * hash01(seed));
-    const branchLen = (13 + 7 * hash01(seed + 1)) * sizeScale;
-    const leafPt = {
-      x: pt.x + Math.cos((angle * Math.PI) / 180) * branchLen,
-      y: pt.y + Math.sin((angle * Math.PI) / 180) * branchLen,
-    };
-    appendCurvePath(svg, pt, leafPt, (hash01(seed + 2) - 0.5) * 10, ctx.stemStroke * 0.4, ctx.branchColorCss, false);
-    leafPoints.push({ point: leafPt, angle });
+    const branchStroke = ctx.stemStroke * (0.34 + 0.14 * verticalBias);
+    appendCurvePath(svg, pt, endPt, branchBow, branchStroke, ctx.branchColorCss, false);
+    primaryBranches.push({ point: endPt, angle, len, fromPt: pt, baseSeed: seed, stroke: branchStroke });
   }
 
-  const bloomPoints = [];
-  const clusterN = ctx.openFlowerCount + ctx.budCount;
-  for (let i = 0; i < clusterN; i++) {
-    const seed = ctx.seedBase + 50 + i * 3.3;
-    const angle = (360 / clusterN) * i + 360 * hash01(seed);
-    const r = (7 + 6 * hash01(seed + 1)) * sizeScale;
-    const point = {
-      x: tip.x + Math.cos((angle * Math.PI) / 180) * r,
-      y: tip.y - 5 * sizeScale + Math.sin((angle * Math.PI) / 180) * r * 0.6,
-    };
-    bloomPoints.push({ point, angle: -90 + (hash01(seed + 2) - 0.5) * 60 });
-  }
-  return { bloomPoints, leafPoints, tip };
-}
-
-// ---- TYPE D: 긴 줄기에 작은 꽃이 위아래로 여러 개 (꽃차례) ----
-function buildGardenTypeTallSpike(ctx) {
-  const { svg, base, sizeScale } = ctx;
-  const stemH = 172 * sizeScale;
-  const bow = 14 * sizeScale * (hash01(ctx.seedBase + 1) - 0.5);
-  const tip = { x: base.x + bow * 0.5, y: base.y - stemH };
-  const stemCurve = appendCurvePath(svg, base, tip, bow, ctx.stemStroke * 0.85, ctx.stemColorCss, true);
-
-  const total = ctx.openFlowerCount + ctx.budCount;
-  const bloomPoints = [];
-  for (let i = 0; i < total; i++) {
-    const t = 0.28 + (i / (total - 1 || 1)) * 0.68;
-    const pt = quadPoint(t, stemCurve.from, stemCurve.mid, stemCurve.to);
-    const side = i % 2 === 0 ? -1 : 1;
-    const seed = ctx.seedBase + 70 + i * 2.7;
-    const angle = -90 + side * (20 + 18 * hash01(seed));
-    const dist = (8 + 6 * hash01(seed + 1)) * sizeScale;
-    const point = { x: pt.x + Math.cos((angle * Math.PI) / 180) * dist, y: pt.y + Math.sin((angle * Math.PI) / 180) * dist };
-    appendCurvePath(svg, pt, point, (hash01(seed + 2) - 0.5) * 8, ctx.stemStroke * 0.28, ctx.branchColorCss, false);
-    bloomPoints.push({ point, angle });
-  }
-
-  const leafPoints = [];
-  const leafN = clamp(Math.round(ctx.leafCount * 0.5), 1, ctx.leafCount);
-  for (let i = 0; i < leafN; i++) {
-    const t = 0.08 + (i / (leafN - 1 || 1)) * 0.2;
-    const pt = quadPoint(t, stemCurve.from, stemCurve.mid, stemCurve.to);
-    const side = i % 2 === 0 ? 1 : -1;
-    leafPoints.push({ point: pt, angle: -90 + side * 35 });
-  }
-  return { bloomPoints, leafPoints, tip };
-}
-
-// ---- TYPE E: 줄기가 살짝 휘어지고 좌우 비대칭으로 꽃이 피는 야생화 ----
-function buildGardenTypeLeaningWild(ctx) {
-  const { svg, base, sizeScale } = ctx;
-  const stemH = 128 * sizeScale;
-  const leanDir = hash01(ctx.seedBase + 1) > 0.5 ? 1 : -1;
-  const bow = leanDir * 34 * sizeScale;
-  const tip = { x: base.x + bow * 0.8, y: base.y - stemH };
-  const stemCurve = appendCurvePath(svg, base, tip, bow, ctx.stemStroke, ctx.stemColorCss, true);
-
-  const branchN = clamp(
-    Math.round((ctx.nBranches + ctx.leafCount) * 0.55),
-    ctx.openFlowerCount + ctx.budCount > 0 ? 2 : 0,
-    14
-  );
-  const bloomPoints = [];
-  const leafPoints = [];
-  for (let i = 0; i < branchN; i++) {
-    const seed = ctx.seedBase + 100 + i * 3.9;
-    const t = 0.3 + (i / (branchN - 1 || 1)) * 0.6;
-    const pt = quadPoint(t, stemCurve.from, stemCurve.mid, stemCurve.to);
-    const biased = hash01(seed) < 0.72 ? leanDir : -leanDir;
-    const angle = -90 + biased * (30 + 26 * hash01(seed + 1));
-    const len = (26 + 22 * hash01(seed + 2)) * sizeScale;
-    const endPt = { x: pt.x + Math.cos((angle * Math.PI) / 180) * len, y: pt.y + Math.sin((angle * Math.PI) / 180) * len };
-    appendCurvePath(svg, pt, endPt, biased * 10 * hash01(seed + 3), ctx.stemStroke * 0.45, ctx.branchColorCss, false);
-    if (i % 2 === 0) {
-      bloomPoints.push({ point: endPt, angle });
-    } else {
-      leafPoints.push({ point: endPt, angle });
+  // ---- 2차 가지: 성숙한 식물(주로 80초 이후)에서 큰 가지 일부가 다시 갈라진다 ----
+  const allBranches = primaryBranches.slice();
+  if (primaryBranches.length > 0) {
+    const hostOrder = primaryBranches
+      .map((b, i) => i)
+      .sort((a, b) => primaryBranches[b].len - primaryBranches[a].len);
+    for (let i = 0; i < growth.secondaryBranchCount; i++) {
+      const host = primaryBranches[hostOrder[i % hostOrder.length]];
+      const seed = host.baseSeed + 700 + i * 9.7;
+      const along = 0.42 + 0.4 * hash01(seed);
+      const originPt = {
+        x: host.fromPt.x + (host.point.x - host.fromPt.x) * along,
+        y: host.fromPt.y + (host.point.y - host.fromPt.y) * along,
+      };
+      const side = hash01(seed + 1) < 0.5 ? -1 : 1;
+      // 2차 가지도 부모 가지처럼 절대 수평 아래로 처지지 않도록 같은 범위로 제한한다.
+      const subAngle = clamp(host.angle + side * (26 + 22 * hash01(seed + 2)), -174, -6);
+      const subLen = host.len * (0.4 + 0.28 * hash01(seed + 3));
+      const subEnd = {
+        x: originPt.x + Math.cos((subAngle * Math.PI) / 180) * subLen,
+        y: originPt.y + Math.sin((subAngle * Math.PI) / 180) * subLen,
+      };
+      appendCurvePath(svg, originPt, subEnd, side * 6 * hash01(seed + 4), host.stroke * 0.55, ctx.branchColorCss, false);
+      allBranches.push({ point: subEnd, angle: subAngle, len: subLen, fromPt: originPt, baseSeed: seed, stroke: host.stroke * 0.55 });
     }
   }
-  return { bloomPoints, leafPoints, tip };
-}
 
-// ---- TYPE F: 중앙 꽃 하나와 주변의 작은 꽃봉오리들 ----
-function buildGardenTypeCenterWithBuds(ctx) {
-  const { svg, base, sizeScale } = ctx;
-  const stemH = 138 * sizeScale;
-  const bow = 10 * sizeScale * (hash01(ctx.seedBase + 1) - 0.5) * 2;
-  const tip = { x: base.x + bow * 0.4, y: base.y - stemH };
-  const stemCurve = appendCurvePath(svg, base, tip, bow, ctx.stemStroke, ctx.stemColorCss, true);
-
+  // ---- 잎: 메인 줄기 + 모든 가지(1차/2차) 전체에 길이 비례로 자연스럽게 분포 ----
   const leafPoints = [];
-  const leafN = clamp(Math.round(ctx.leafCount * 0.5), 1, ctx.leafCount);
-  for (let i = 0; i < leafN; i++) {
-    const t = 0.22 + (i / (leafN - 1 || 1)) * 0.34;
+  const leafOnStem = allBranches.length === 0 ? growth.leafCount : clamp(Math.round(growth.leafCount * 0.2), 1, growth.leafCount);
+  for (let i = 0; i < leafOnStem; i++) {
+    const t = 0.12 + (i / Math.max(1, leafOnStem - 1)) * 0.58;
     const pt = quadPoint(t, stemCurve.from, stemCurve.mid, stemCurve.to);
-    leafPoints.push({ point: pt, angle: -90 + (i % 2 === 0 ? -1 : 1) * 34 });
+    const side = i % 2 === 0 ? -1 : 1;
+    leafPoints.push({ point: pt, angle: -90 + side * (30 + 16 * hash01(seedBase + 300 + i)) });
   }
+  let leafRemaining = growth.leafCount - leafOnStem;
+  const totalBranchLen = allBranches.reduce((sum, b) => sum + b.len, 0) || 1;
+  allBranches.forEach((b) => {
+    if (leafRemaining <= 0) {
+      return;
+    }
+    const share = Math.min(leafRemaining, Math.max(1, Math.round(growth.leafCount * 0.8 * (b.len / totalBranchLen))));
+    for (let i = 0; i < share; i++) {
+      const along = share === 1 ? 0.75 : 0.4 + (i / (share - 1)) * 0.55;
+      const pt = { x: b.fromPt.x + (b.point.x - b.fromPt.x) * along, y: b.fromPt.y + (b.point.y - b.fromPt.y) * along };
+      const seed = b.baseSeed + 900 + i * 4.1;
+      const side = hash01(seed) < 0.5 ? -1 : 1;
+      leafPoints.push({ point: pt, angle: clamp(b.angle + side * (50 + 22 * hash01(seed + 1)), -178, -2) });
+    }
+    leafRemaining -= share;
+  });
 
-  const totalBlooms = ctx.openFlowerCount + ctx.budCount;
-  const bloomPoints = totalBlooms > 0 ? [{ point: tip, angle: -90 }] : [];
-  const ringN = Math.max(0, totalBlooms - 1);
-  for (let i = 0; i < ringN; i++) {
-    const seed = ctx.seedBase + 130 + i * 3.1;
-    const angle = (360 / Math.max(1, ringN)) * i + 360 * hash01(seed);
-    const r = (15 + 8 * hash01(seed + 1)) * sizeScale;
-    const point = {
-      x: tip.x + Math.cos((angle * Math.PI) / 180) * r,
-      y: tip.y - 4 * sizeScale + Math.sin((angle * Math.PI) / 180) * r * 0.7,
-    };
-    appendCurvePath(svg, tip, point, (hash01(seed + 2) - 0.5) * 6, ctx.stemStroke * 0.26, ctx.branchColorCss, false);
-    bloomPoints.push({ point, angle });
+  // ---- 꽃/봉오리 자리: 줄기 꼭대기 근처 + 모든 가지를 따라 여러 지점 ----
+  // 가지 수가 적은 이른 성장 단계에서도 60초 근처의 풍성한 개화를 담을 수 있도록,
+  // 가지 끝 하나당 한 자리가 아니라 가지 길이에 비례해 여러 자리를 마련한다.
+  const bloomSlots = [{ point: tip, angle: -90 }];
+  const topSlotCount = 3;
+  for (let i = 1; i <= topSlotCount; i++) {
+    const seed = seedBase + 500 + i * 2.9;
+    const tNear = clamp(0.85 + 0.12 * (i / topSlotCount), 0, 0.98);
+    const nearTip = quadPoint(tNear, stemCurve.from, stemCurve.mid, stemCurve.to);
+    const angle = -90 + (hash01(seed) - 0.5) * 150;
+    const dist = 9 + 11 * hash01(seed + 1);
+    bloomSlots.push({
+      point: { x: nearTip.x + Math.cos((angle * Math.PI) / 180) * dist, y: nearTip.y + Math.sin((angle * Math.PI) / 180) * dist },
+      angle,
+    });
   }
+  allBranches.forEach((b) => {
+    const slotCount = clamp(Math.round(b.len / 16), 1, 4);
+    for (let s = 0; s < slotCount; s++) {
+      const along = slotCount === 1 ? 0.92 : 0.5 + (s / (slotCount - 1)) * 0.46;
+      const pt = { x: b.fromPt.x + (b.point.x - b.fromPt.x) * along, y: b.fromPt.y + (b.point.y - b.fromPt.y) * along };
+      const seed = b.baseSeed + 1200 + s * 3.3;
+      const side = hash01(seed) < 0.5 ? -1 : 1;
+      bloomSlots.push({ point: pt, angle: b.angle + side * (18 + 16 * hash01(seed + 1)) });
+    }
+  });
+  // 꼭대기(tip)는 항상 가장 먼저 피는 "중심 꽃"으로 고정하고, 나머지 자리는 씨앗별로
+  // 순서를 섞어서 — 개화 수가 적을 때 매번 정상부에만 몰리지 않고 식물마다 다른
+  // 위치(가지 하나, 줄기 상단 등)에서 꽃이 피도록 한다.
+  const restSlots = bloomSlots.slice(1);
+  restSlots.forEach((slot, i) => {
+    slot.__order = hash01(seedBase * 7.7 + i * 1.3 + 2.1);
+  });
+  restSlots.sort((a, b) => a.__order - b.__order);
+  const bloomPoints = [bloomSlots[0], ...restSlots];
+
   return { bloomPoints, leafPoints, tip };
 }
 
-const GARDEN_TYPE_BUILDERS = [
-  buildGardenTypeSingleBloom, // TYPE A
-  buildGardenTypeForking, // TYPE B
-  buildGardenTypeClusteredLow, // TYPE C
-  buildGardenTypeTallSpike, // TYPE D
-  buildGardenTypeLeaningWild, // TYPE E
-  buildGardenTypeCenterWithBuds, // TYPE F
-];
-
-// 이 두 값이 이 시스템 전체의 핵심 원칙이다:
-//   growthT (elapsedSeconds에서만 계산) = 식물이 "얼마나 자랐는가" (성장량)
+// 이 시스템 전체의 핵심 원칙은 "성장"과 "개화"를 서로 다른 기준으로 분리하는 것이다:
+//   heightT/massT (elapsedSeconds에서만 계산) = 식물의 구조적 성숙도.
+//           시간이 흐를수록 키·가지 수·2차 가지 수·잎 수·줄기 굵기가 계속 늘어나고
+//           절대 다시 줄어들지 않으며, 아주 긴 시간에서도 화면을 벗어나지 않도록
+//           최대치에 한없이 가까워지기만 한다. 특히 키(heightT)는 비교적 빨리 포화되고
+//           풍성함(massT: 폭/가지/잎/굵기)은 훨씬 천천히 포화되어, 60초 이후로 갈수록
+//           "위로 길쭉해지는 것"이 아니라 "옆으로 넓고 가지·잎이 많은 식물"이 된다.
+//   bloomT (|elapsedSeconds - 60|에서만 계산) = 꽃의 개수/개화 정도.
+//           60초에 가장 가까울 때 가장 풍성하고, 60초 이전·이후 어느 쪽으로 멀어지든
+//           점진적으로 줄어든다 (60초를 넘겼다고 갑자기 사라지지 않음).
 //   randomSeed (측정 완료 시 한 번 생성되어 저장되는 값) = 이 식물만의 "개성"
-// 성장량과 개성은 서로 완전히 독립적인 입력이라서, 아주 짧은 시간이 화려하게 만개하거나
-// 긴 시간이 새싹인 채로 남는 일이 없다 — 동시에 같은 성장 단계 안에서도 식물마다
-// 형태(6종)·잎모양(4종)·꽃모양(6종)·색조합(8종)·미세한 흔들림이 저마다 다르다.
+// 세 값이 서로 완전히 독립적인 입력이라서, 60초를 넘긴 뒤에도 식물 자체(키·굵기·가지·
+// 잎)는 계속 자라 더 크고 성숙한(관목·작은 나무 같은) 실루엣이 되는 동시에, 꽃의 수만
+// 60초를 기준으로 자연스럽게 늘었다 줄어든다. 같은 성장 단계 안에서도 식물마다 줄기
+// 곡선·가지 방향/길이·잎모양(4종)·꽃모양(6종)·색조합(8종)이 저마다 다르다.
 function computeGrowthLevel(elapsedSeconds) {
-  // 0초=0, 10초≈0.22, 20초≈0.39, 35초≈0.58, 50초≈0.71, 65초≈0.80로 부드럽게 증가하다가
-  // 아주 긴 시간에서도 1에 한없이 가까워지기만 할 뿐 넘지 않는다 (최대 크기 제한).
-  const g = 1 - Math.exp(-elapsedSeconds / 40);
+  const t = Math.max(0, elapsedSeconds);
+
+  // ---- 구조 성장: 실제로 흐른 시간에만 의존, 항상 증가, 최대치로 수렴 ----
+  // heightT(키): 0초=0, 20초≈0.41, 60초≈0.79, 100초≈0.93 로 60초 언저리에서 거의 다 자란다.
+  // massT(풍성함=폭/가지/잎/굵기): 0초=0, 60초≈0.47, 100초≈0.65, 150초≈0.81 로 훨씬 천천히
+  // 포화되어, 60초 이후에도 한동안 계속 풍성해진다.
+  const heightT = 1 - Math.exp(-t / 38);
+  const massT = 1 - Math.exp(-t / 95);
+
+  const mainHeight = 34 + 150 * heightT; // px, 최대 약 184 (화면을 벗어나지 않는 상한)
+  const stemStroke = clamp(3 + 5 * massT, 3, 8.5);
+  const branchLenBase = 24 + 42 * massT;
+  const angleSpread = 34 + 58 * massT; // 가지가 좌우로 벌어지는 폭(도)
+  const branchCount = clamp(Math.round(Math.max(0, massT - 0.05) * 9), 0, 9);
+  const secondaryBranchCount = clamp(Math.round(Math.max(0, massT - 0.5) * 14), 0, 6);
+  const leafCount = clamp(Math.round(2 + 28 * massT * massT), 2, 34);
+
+  // 장식 요소(글로우/그림자/새싹점 등) 크기 계수 — 키와 풍성함을 함께 반영해 계속
+  // 커지되 상한이 있어 화면을 벗어나지 않는다.
+  const sizeScale = clamp(0.15 + 0.5 * heightT + 0.55 * massT, 0.15, 1.35);
+
+  // ---- 개화: 60초와의 "거리"에만 의존, 60초에서 가장 풍성, 멀어질수록 점진적으로 감소 ----
+  // 60초 이전(봉오리가 맺히는 구간)과 이후(꽃이 지며 식물이 더 성숙해지는 구간)의 폭을
+  // 다르게 주어, 60초를 막 넘긴 직후에는 살짝만 줄고 시간이 많이 지날수록 더 크게 준다.
+  const diff = t - 60;
+  const bloomSigma = diff <= 0 ? 16 : 22;
+  const bloomT = Math.exp(-(diff * diff) / (2 * bloomSigma * bloomSigma));
 
   return {
-    g,
-    sizeScale: clamp(0.1 + 0.9 * g, 0.1, 1),
-    leafCount: clamp(Math.round(0.5 + 12 * g), 1, 14),
-    nBranches: clamp(Math.round(Math.max(0, g - 0.15) * 8), 0, 8),
-    budCount: clamp(Math.round(Math.max(0, g - 0.35) * 4.5), 0, 5),
-    openFlowerCount: clamp(Math.round(Math.max(0, g - 0.55) * 13), 0, 9),
+    heightT,
+    massT,
+    bloomT,
+    sizeScale,
+    mainHeight,
+    stemStroke,
+    branchLenBase,
+    angleSpread,
+    branchCount,
+    secondaryBranchCount,
+    leafCount,
+    // 봉오리/꽃 개수는 "개화도(bloomT)"에만 의존. 봉오리가 꽃보다 먼저(더 낮은 bloomT에서)
+    // 나타나도록 지수를 다르게 주어(0.6 vs 1.5) 봉오리 → 개화 순서를 만든다.
+    budCount: clamp(Math.round(5 * Math.pow(bloomT, 0.6)), 0, 5),
+    openFlowerCount: clamp(Math.round(9 * Math.pow(bloomT, 1.5)), 0, 9),
   };
 }
 
@@ -800,7 +771,6 @@ function renderWildflowerPlant(svg, elapsedSeconds, randomSeed, animated) {
   const growth = computeGrowthLevel(elapsedSeconds);
   const seedBase = randomSeed;
 
-  const typeIndex = pickIndex(seedBase * 0.913 + 4.7, GARDEN_TYPE_BUILDERS.length);
   const comboIndex = pickIndex(seedBase * 1.71 + 9.3, GARDEN_PALETTE_COMBOS.length);
   const leafShapeName = GARDEN_LEAF_SHAPES[pickIndex(seedBase * 2.37 + 15.1, GARDEN_LEAF_SHAPES.length)];
   const flowerShapeName = GARDEN_FLOWER_SHAPES[pickIndex(seedBase * 3.19 + 21.4, GARDEN_FLOWER_SHAPES.length)];
@@ -815,11 +785,12 @@ function renderWildflowerPlant(svg, elapsedSeconds, randomSeed, animated) {
   const branchColorRgb = mixColor(stemColorRgb, leafTint, 0.5);
 
   const base = { x: 200, y: 460 };
-  const stemStroke = clamp(3.2 + 2 * growth.sizeScale, 3, 6.5);
+  const stemStroke = growth.stemStroke;
 
   const ctx = {
     svg,
     base,
+    growth,
     sizeScale: growth.sizeScale,
     seedBase,
     stemStroke,
@@ -832,10 +803,9 @@ function renderWildflowerPlant(svg, elapsedSeconds, randomSeed, animated) {
     colorB,
     centerColor,
     leafCount: growth.leafCount,
-    nBranches: growth.nBranches,
     openFlowerCount: growth.openFlowerCount,
     budCount: growth.budCount,
-    bigFirstBloom: typeIndex === 0,
+    bigFirstBloom: hash01(seedBase * 4.11 + 888) > 0.72,
   };
 
   // 은은한 앰비언트 글로우 (맨 뒤에 위치, 밤에 스스로 빛나는 듯한 느낌)
@@ -866,7 +836,7 @@ function renderWildflowerPlant(svg, elapsedSeconds, randomSeed, animated) {
   seedDot.classList.add("plant-seed");
   svg.appendChild(seedDot);
 
-  const { bloomPoints, leafPoints, tip } = GARDEN_TYPE_BUILDERS[typeIndex](ctx);
+  const { bloomPoints, leafPoints, tip } = buildStructuredPlant(ctx);
 
   drawGardenLeaves(ctx, leafPoints);
   assignAndDrawBlooms(ctx, bloomPoints);
@@ -963,6 +933,10 @@ function renderGardenScreen() {
     return;
   }
 
+  // 다시 그려지면 기존 식물 DOM(및 카드가 참조하던 앵커 엘리먼트)이 사라지므로,
+  // 열려 있던 시간 기록 카드가 있다면 먼저 닫는다.
+  closeTimeCard();
+
   const plants = loadGardenPlants();
 
   const gardenBed = document.getElementById("gardenBed");
@@ -1025,11 +999,149 @@ function renderGardenScreen() {
     label.textContent = plantLabelFor(index);
     wrapper.appendChild(label);
 
+    // 꽃/줄기 같은 특정 부분이 아니라 식물 전체(래퍼)를 눌러도 시간 기록이 열리도록 한다.
+    wrapper.setAttribute("tabindex", "0");
+    wrapper.setAttribute("role", "button");
+    wrapper.setAttribute("aria-haspopup", "dialog");
+    wrapper.setAttribute("aria-label", `${plantLabelFor(index)} — 시간 기록 보기`);
+    wrapper.addEventListener("click", () => openTimeCard(entry, index, wrapper));
+    wrapper.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+        event.preventDefault();
+        openTimeCard(entry, index, wrapper);
+      }
+    });
+
     container.appendChild(wrapper);
     // 예전에 저장된 식물(개성 시드가 없는 데이터)도 문제없이 그려지도록 대체값을 준비해 둔다.
     const seed = entry.randomSeed !== undefined ? entry.randomSeed : entry.elapsedSeconds * 137.5;
     renderWildflowerPlant(svg, entry.elapsedSeconds, seed, false);
   });
+}
+
+// ---------- 정원 식물 클릭 시 뜨는 시간 기록 카드 ----------
+// 새로운 기록 저장소를 만들지 않고, 이미 localStorage에 저장되어 있는 각 식물의
+// (elapsedSeconds, diffSeconds) 값을 그대로 읽어 보여준다.
+function formatEntryTimeStats(entry) {
+  const hasElapsed = entry && typeof entry.elapsedSeconds === "number" && Number.isFinite(entry.elapsedSeconds);
+  if (!hasElapsed) {
+    return {
+      actualText: "기록 없음",
+      diffText: "기록 없음",
+      message: "이 시간에 대한 기록을 찾을 수 없습니다.",
+    };
+  }
+
+  const elapsed = entry.elapsedSeconds;
+  const diff =
+    entry && typeof entry.diffSeconds === "number" && Number.isFinite(entry.diffSeconds)
+      ? entry.diffSeconds
+      : elapsed - 60;
+
+  const absText = Math.abs(diff).toFixed(1);
+  let message;
+  if (absText === "0.0") {
+    message = "실제 1분과 거의 정확하게 일치했습니다.";
+  } else if (diff > 0) {
+    message = `나는 1분을 실제보다 ${absText}초 빠르게 느꼈습니다.`;
+  } else {
+    message = `나는 1분을 실제보다 ${absText}초 느리게 느꼈습니다.`;
+  }
+
+  return {
+    actualText: `${elapsed.toFixed(1)}초`,
+    diffText: formatSigned(diff),
+    message,
+  };
+}
+
+// 좁은 화면(모바일 등)에서는 식물 바로 옆에 카드를 띄우면 잘릴 수 있으므로
+// 화면 중앙의 작은 모달로 자동 전환한다.
+const TIME_CARD_NARROW_BREAKPOINT = 560;
+const TIME_CARD_MARGIN = 14;
+
+function positionTimeCard(card, anchorEl) {
+  const isNarrow = window.innerWidth < TIME_CARD_NARROW_BREAKPOINT;
+  card.classList.toggle("time-card--centered", isNarrow);
+  if (isNarrow || !anchorEl) {
+    card.style.left = "";
+    card.style.top = "";
+    return;
+  }
+
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  const cardWidth = cardRect.width || 280;
+  const cardHeight = cardRect.height || 170;
+
+  let left = anchorRect.left + anchorRect.width / 2 - cardWidth / 2;
+  let top = anchorRect.top - cardHeight - TIME_CARD_MARGIN; // 식물 위쪽을 우선
+
+  if (top < TIME_CARD_MARGIN) {
+    top = anchorRect.bottom + TIME_CARD_MARGIN; // 위쪽 공간이 부족하면 아래쪽에
+  }
+
+  left = clamp(left, TIME_CARD_MARGIN, window.innerWidth - cardWidth - TIME_CARD_MARGIN);
+  top = clamp(top, TIME_CARD_MARGIN, window.innerHeight - cardHeight - TIME_CARD_MARGIN);
+
+  card.style.left = `${left}px`;
+  card.style.top = `${top}px`;
+}
+
+let timeCardHideTimeoutId = null;
+let timeCardAnchorEl = null;
+
+function openTimeCard(entry, index, anchorEl) {
+  const card = document.getElementById("timeCard");
+  const catcher = document.getElementById("timeCardCatcher");
+  const titleEl = document.getElementById("timeCardTitle");
+  const actualEl = document.getElementById("timeCardActual");
+  const diffEl = document.getElementById("timeCardDiff");
+  const messageEl = document.getElementById("timeCardMessage");
+  if (!card || !catcher || !titleEl || !actualEl || !diffEl || !messageEl) {
+    return;
+  }
+
+  if (timeCardHideTimeoutId !== null) {
+    clearTimeout(timeCardHideTimeoutId);
+    timeCardHideTimeoutId = null;
+  }
+
+  const stats = formatEntryTimeStats(entry || {});
+  titleEl.textContent = plantLabelFor(index);
+  actualEl.textContent = stats.actualText;
+  diffEl.textContent = stats.diffText;
+  messageEl.textContent = stats.message;
+
+  catcher.hidden = false;
+  card.hidden = false;
+  timeCardAnchorEl = anchorEl || null;
+  positionTimeCard(card, timeCardAnchorEl);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      card.classList.add("is-visible");
+    });
+  });
+}
+
+function closeTimeCard() {
+  const card = document.getElementById("timeCard");
+  const catcher = document.getElementById("timeCardCatcher");
+  if (!card || card.hidden) {
+    return;
+  }
+  card.classList.remove("is-visible");
+  timeCardAnchorEl = null;
+  if (timeCardHideTimeoutId !== null) {
+    clearTimeout(timeCardHideTimeoutId);
+  }
+  timeCardHideTimeoutId = setTimeout(() => {
+    card.hidden = true;
+    if (catcher) {
+      catcher.hidden = true;
+    }
+  }, 340);
 }
 
 function handlePlantToGarden() {
@@ -1115,6 +1227,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const resetCancelBtn = document.getElementById("resetCancelBtn");
   const resetConfirmBtn = document.getElementById("resetConfirmBtn");
   const resetModalOverlay = document.getElementById("resetModalOverlay");
+  const timeCardClose = document.getElementById("timeCardClose");
+  const timeCardCatcher = document.getElementById("timeCardCatcher");
 
   if (startBtn) {
     startBtn.addEventListener("click", startMeasuring);
@@ -1153,6 +1267,25 @@ document.addEventListener("DOMContentLoaded", () => {
         closeResetModal();
       }
     });
+  }
+
+  if (timeCardClose) {
+    timeCardClose.addEventListener("click", closeTimeCard);
+  }
+  if (timeCardCatcher) {
+    // 카드 바깥(투명 레이어) 클릭 시 닫는다.
+    timeCardCatcher.addEventListener("click", closeTimeCard);
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeTimeCard();
+    }
+  });
+  // 창 크기 변경/스크롤 시 카드가 원래 식물 위치에서 벗어나 보일 수 있으므로 닫는다.
+  window.addEventListener("resize", closeTimeCard);
+  const gardenScreenEl = document.getElementById("screen-garden");
+  if (gardenScreenEl) {
+    gardenScreenEl.addEventListener("scroll", closeTimeCard, { passive: true });
   }
 
   renderGardenScreen();
